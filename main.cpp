@@ -5,16 +5,9 @@
 #include <GLFW/glfw3.h>
 
 #define RES 512
+#define N 256
 
-
-float particles[3 * 2 * 2] = {
-  0.0, 0.5,
-  0.5, -0.5,
-  -0.5, -0.5,
-  0.5, -0.1,
-  -0.3, 0.6,
-  0.6, 0.3,
-};
+float particles[N * 2 * 2];
 
 const char vertex_shader_text[] =
 "#version 330 core\n"
@@ -23,7 +16,7 @@ const char vertex_shader_text[] =
 "void main()\n"
 "{\n"
 "  gl_Position = vec4(vPosition, 1);\n"
-"  gl_PointSize = 8;\n"
+"  gl_PointSize = 4;\n"
 "}\n"
 ;
 
@@ -205,13 +198,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void display_callback(void)
 {
   do_compute();
-  glPointSize(8);
+  glPointSize(4);
   glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(render_program);
   bind_buffer_data(GL_ARRAY_BUFFER,
       vbo, sizeof(particles), particles, GL_STATIC_DRAW);
-  glDrawArrays(GL_POINTS, 0, 3);
+  glDrawArrays(GL_POINTS, 0, N);
+}
+
+void random_init(void)
+{
+  for (int i = 0; i < N * 2 * 2; i++) {
+    particles[i] = (float)drand48() * 2 - 1;
+  }
 }
 
 
@@ -228,6 +228,7 @@ int main(void)
   glewInit();
   glViewport(0, 0, RES, RES);
 
+  random_init();
   init_compute_shaders();
   init_compute_buffers();
   init_render_shaders();
