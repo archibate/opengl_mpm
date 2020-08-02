@@ -5,9 +5,17 @@
 #define RES 512
 
 
-struct {
+struct vec2 {
   float x, y;
-} vertices[3] = {
+};
+
+struct vec2 vertices[3] = {
+  0.0, 0.5,
+  0.5, -0.5,
+  -0.5, -0.5,
+};
+
+struct vec2 particles[3] = {
   0.0, 0.5,
   0.5, -0.5,
   -0.5, -0.5,
@@ -33,7 +41,11 @@ const char fragment_shader_text[] =
 ;
 
 
-GLuint vao, vbo, render_program;
+int vao, vbo;
+int render_program;
+
+int ssbo_particles;
+int compute_program;
 
 
 int load_shader(int type, const char *source) {
@@ -52,13 +64,7 @@ int load_shader(int type, const char *source) {
   return shader;
 }
 
-void init_shaders(void)
-{
-  int vertex_shader = load_shader(GL_VERTEX_SHADER, vertex_shader_text);
-  int fragment_shader = load_shader(GL_FRAGMENT_SHADER, fragment_shader_text);
-  render_program = glCreateProgram();
-  glAttachShader(render_program, vertex_shader);
-  glAttachShader(render_program, fragment_shader);
+void link_program(int program) {
   glLinkProgram(render_program);
   int status = GL_TRUE;
   glGetProgramiv(render_program, GL_LINK_STATUS, &status);
@@ -69,20 +75,51 @@ void init_shaders(void)
     log[logLength] = 0;
     fprintf(stderr, "error while linking shader:\n%s\n", log);
   }
+}
+
+int create_buffer(void)
+{
+  GLuint buf;
+  glGenBuffers(1, &buf);
+  return buf;
+}
+
+void bind_buffer_data(int type, int buf, size_t size, void *data, int access)
+{
+  glBindBuffer(type, buf);
+  glBufferData(type, size, data, access);
+}
+
+void init_render_shaders(void)
+{
+  int vertex_shader = load_shader(GL_VERTEX_SHADER, vertex_shader_text);
+  int fragment_shader = load_shader(GL_FRAGMENT_SHADER, fragment_shader_text);
+  render_program = glCreateProgram();
+  glAttachShader(render_program, vertex_shader);
+  glAttachShader(render_program, fragment_shader);
+  link_program(render_program);
   glUseProgram(render_program);
 }
 
-void init_buffers(void)
+void init_render_buffers(void)
 {
-  glGenBuffers(1, &vbo);
+  vbo = create_buffer();
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  bind_buffer_data(GL_ARRAY_BUFFER,
+      vbo, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-  glGenVertexArrays(1, &vao);
+  glGenVertexArrays(1, (GLuint *)&vao);
   glBindVertexArray(vao);
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+}
+
+void init_compute_buffers(void)
+{
+  ssbo_particles = create_buffer();
+  bind_buffer_data(GL_SHADER_STORAGE_BUFFER, ssbo_particles,
+      sizeof(particles), particles, GL_DYNAMIC_READ);
 }
 
 
@@ -99,12 +136,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void display_callback(void)
 {
+  glPointSize(8);
   glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT);
-
   glUseProgram(render_program);
-
-  glPointSize(8);
   glDrawArrays(GL_POINTS, 0, 3);
 }
 
@@ -122,8 +157,8 @@ int main(void)
   glewInit();
   glViewport(0, 0, RES, RES);
 
-  init_shaders();
-  init_buffers();
+  init_render_shaders();
+  init_render_buffers();
 
   while (!glfwWindowShouldClose(window)) {
     display_callback();
