@@ -1,21 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #define RES 512
 
 
-struct vec2 {
-  float x, y;
-};
-
-struct vec2 vertices[3] = {
-  0.0, 0.5,
-  0.5, -0.5,
-  -0.5, -0.5,
-};
-
-struct vec2 particles[3] = {
+float particles[3 * 2] = {
   0.0, 0.5,
   0.5, -0.5,
   -0.5, -0.5,
@@ -24,6 +15,7 @@ struct vec2 particles[3] = {
 const char vertex_shader_text[] =
 "#version 330 core\n"
 "in vec3 vPosition;\n"
+"\n"
 "void main()\n"
 "{\n"
 "  gl_Position = vec4(vPosition, 1);\n"
@@ -34,9 +26,27 @@ const char vertex_shader_text[] =
 const char fragment_shader_text[] =
 "#version 330 core\n"
 "out vec4 fragColor;\n"
+"\n"
 "void main()\n"
 "{\n"
 "  fragColor = vec4(1.0, 0.8, 0.2, 0.0);\n"
+"}\n"
+;
+
+const char compute_shader_text[] =
+"#version 430 core\n"
+"\n"
+"layout (std430, binding = 0) buffer b_particles {\n"
+"  vec2 pos[3];\n"
+"};\n"
+"\n"
+"layout (local_size_x = 3) in;\n"
+"\n"
+"void main()\n"
+"{\n"
+"  float dt = 0.01;\n"
+"  uint i = gl_GlobalInvocationID.x;\n"
+"  pos[i] += vec2(0.0, 1.0) * dt;\n"
 "}\n"
 ;
 
@@ -65,13 +75,13 @@ int load_shader(int type, const char *source) {
 }
 
 void link_program(int program) {
-  glLinkProgram(render_program);
+  glLinkProgram(program);
   int status = GL_TRUE;
-  glGetProgramiv(render_program, GL_LINK_STATUS, &status);
+  glGetProgramiv(program, GL_LINK_STATUS, &status);
   if (status != GL_TRUE) {
     char log[1024];
     int logLength = sizeof(log) - 1;
-    glGetProgramInfoLog(render_program, logLength, &logLength, log);
+    glGetProgramInfoLog(program, logLength, &logLength, log);
     log[logLength] = 0;
     fprintf(stderr, "error while linking shader:\n%s\n", log);
   }
@@ -104,9 +114,8 @@ void init_render_shaders(void)
 void init_render_buffers(void)
 {
   vbo = create_buffer();
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
   bind_buffer_data(GL_ARRAY_BUFFER,
-      vbo, sizeof(vertices), vertices, GL_STATIC_DRAW);
+      vbo, sizeof(particles), particles, GL_STATIC_DRAW);
 
   glGenVertexArrays(1, (GLuint *)&vao);
   glBindVertexArray(vao);
@@ -115,11 +124,32 @@ void init_render_buffers(void)
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 }
 
+void init_compute_shaders(void)
+{
+  int compute_shader = load_shader(GL_COMPUTE_SHADER, compute_shader_text);
+  compute_program = glCreateProgram();
+  glAttachShader(compute_program, compute_shader);
+  link_program(compute_program);
+  glUseProgram(compute_program);
+}
+
 void init_compute_buffers(void)
 {
   ssbo_particles = create_buffer();
   bind_buffer_data(GL_SHADER_STORAGE_BUFFER, ssbo_particles,
       sizeof(particles), particles, GL_DYNAMIC_READ);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_particles);
+}
+
+void do_compute(void)
+{
+  glUseProgram(compute_program);
+  glDispatchCompute(1, 1, 1);
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_particles);
+  void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+  memcpy(particles, p, sizeof(particles));
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
 
 
@@ -136,10 +166,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void display_callback(void)
 {
+  do_compute();
   glPointSize(8);
   glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(render_program);
+  bind_buffer_data(GL_ARRAY_BUFFER,
+      vbo, sizeof(particles), particles, GL_STATIC_DRAW);
+  printf("hello %f %f\n", particles[0], particles[1]);
   glDrawArrays(GL_POINTS, 0, 3);
 }
 
@@ -157,6 +191,8 @@ int main(void)
   glewInit();
   glViewport(0, 0, RES, RES);
 
+  init_compute_shaders();
+  init_compute_buffers();
   init_render_shaders();
   init_render_buffers();
 
