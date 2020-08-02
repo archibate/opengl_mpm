@@ -1,6 +1,14 @@
 #version 430 core
 #define N 256
 #define G 32
+#define dx (1.0 / G)
+#define dt 2e-4
+#define p_rho 1
+#define p_vol sqr(dx * 0.5)
+#define p_mass (p_vol * p_rho)
+#define E 400
+#define bound 3
+#define gravity 9.8
 
 layout (std430, binding = 0) buffer b0 {
   vec2 x[];
@@ -21,10 +29,49 @@ layout (std430, binding = 5) buffer b5 {
   float grid_m[];
 };
 
-layout (local_size_x = G, local_size_y = G) in;
+layout (local_size_x = N) in;
+
+float sqr(float x) {
+  return x * x;
+}
+
+vec2 sqr(vec2 x) {
+  return x * x;
+}
+
+vec2 wfunc(int i, vec2 fx) {
+  if (i == 0) {
+    return 0.5 * sqr(1.5 - fx);
+  } else if (i == 1) {
+    return 0.75 - sqr(fx - 1.0);
+  } else {
+    return 0.5 * sqr(fx - 0.5);
+  }
+}
 
 void main()
 {
-  uvec2 ij = gl_GlobalInvocationID.xy;
+  uint p = gl_GlobalInvocationID.x;
+  vec2 Xp = x[p] / dx;
+  ivec2 base = ivec2(Xp - 0.5);
+  vec2 fx = Xp - base;
+  vec2 new_v = vec2(0);
+  mat2 new_C = mat2(0);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ivec2 off = ivec2(i, j);
+      vec2 dpos = (off - fx) * dx;
+      vec2 wi = wfunc(i, fx);
+      float weight = wi.x * wi.y;
+      ivec2 gij = base + off;
+      int g_ = gij.x * G + gij.y;
+      vec2 g_v = grid_v[g_];
+      new_v += weight * g_v;
+      new_C += 4 * weight * outerProduct(g_v, dpos) / sqr(dx);
+    }
+  }
+  v[p] = new_v;
+  x[p] += dt * v[p];
+  J[p] *= 1 + dt * (new_C[0][0] + new_C[1][1]);
+  C[p] *= new_C;
 }
-

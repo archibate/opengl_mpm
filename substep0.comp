@@ -1,6 +1,14 @@
 #version 430 core
 #define N 256
 #define G 32
+#define dx (1.0 / G)
+#define dt 2e-4
+#define p_rho 1
+#define p_vol sqr(dx * 0.5)
+#define p_mass (p_vol * p_rho)
+#define E 400
+#define bound 3
+#define gravity 9.8
 
 layout (std430, binding = 0) buffer b0 {
   vec2 x[];
@@ -26,6 +34,8 @@ layout (local_size_x = G, local_size_y = G) in;
 void main()
 {
   uvec2 ij = gl_GlobalInvocationID.xy;
-  grid_v[ij.x * G + ij.y] = vec2(0);
-  grid_m[ij.x * G + ij.y] = 0;
+  uint g_ = ij.x * G + ij.y;
+
+  grid_v[g_] = vec2(0);
+  grid_m[g_] = 0;
 }
