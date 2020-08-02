@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -133,13 +134,34 @@ void init_render_buffers(void)
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
 }
 
+int create_compute_shader(const char *source)
+{
+  int shader = load_shader(GL_COMPUTE_SHADER, source);
+  int program = glCreateProgram();
+  glAttachShader(program, shader);
+  link_program(program);
+  return program;
+}
+
+char *file_get_content(const char *name)
+{
+  FILE *fp = fopen(name, "r");
+  if (!fp) {
+    perror(name);
+    return NULL;
+  }
+  fseek(fp, 0, SEEK_END);
+  size_t len = ftell(fp);
+  char *buf = (char *)malloc(len + 1);
+  fseek(fp, 0, SEEK_SET);
+  fread(buf, len, 1, fp);
+  buf[len] = 0;
+  return buf;
+}
+
 void init_compute_shaders(void)
 {
-  int compute_shader = load_shader(GL_COMPUTE_SHADER, compute_shader_text);
-  compute_program = glCreateProgram();
-  glAttachShader(compute_program, compute_shader);
-  link_program(compute_program);
-  glUseProgram(compute_program);
+  compute_program = create_compute_shader(file_get_content("substep1.comp"));
 }
 
 void init_compute_buffers(void)
