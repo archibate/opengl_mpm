@@ -6,10 +6,13 @@
 #define RES 512
 
 
-float particles[3 * 2] = {
+float particles[3 * 2 * 2] = {
   0.0, 0.5,
   0.5, -0.5,
   -0.5, -0.5,
+  0.5, -0.1,
+  -0.3, 0.6,
+  0.6, 0.3,
 };
 
 const char vertex_shader_text[] =
@@ -38,15 +41,21 @@ const char compute_shader_text[] =
 "\n"
 "layout (std430, binding = 0) buffer b_particles {\n"
 "  vec2 pos[3];\n"
+"  vec2 vel[3];\n"
 "};\n"
 "\n"
 "layout (local_size_x = 3) in;\n"
 "\n"
 "void main()\n"
 "{\n"
-"  float dt = 0.01;\n"
+"  float dt = 0.02;\n"
 "  uint i = gl_GlobalInvocationID.x;\n"
-"  pos[i] += vec2(0.0, 1.0) * dt;\n"
+"  vel[i] -= vec2(0.0, 1.0) * dt;\n"
+"  if (pos[i].x > +1 && vel[i].x > 0) vel[i].x *= -1;\n"
+"  if (pos[i].x < -1 && vel[i].x < 0) vel[i].x *= -1;\n"
+"  if (pos[i].y > +1 && vel[i].y > 0) vel[i].y *= -1;\n"
+"  if (pos[i].y < -1 && vel[i].y < 0) vel[i].y *= -1;\n"
+"  pos[i] += vel[i] * dt;\n"
 "}\n"
 ;
 
@@ -173,7 +182,6 @@ void display_callback(void)
   glUseProgram(render_program);
   bind_buffer_data(GL_ARRAY_BUFFER,
       vbo, sizeof(particles), particles, GL_STATIC_DRAW);
-  printf("hello %f %f\n", particles[0], particles[1]);
   glDrawArrays(GL_POINTS, 0, 3);
 }
 
