@@ -8,17 +8,18 @@
 struct {
   float x, y;
 } vertices[3] = {
-  -0.6f, -0.4f,
-  0.6f, -0.4f,
-  0.0f, 0.6f,
+  0.0, 0.5,
+  0.5, -0.5,
+  -0.5, -0.5,
 };
 
 const char vertex_shader_text[] =
 "#version 330 core\n"
-"in vec2 vPosition;\n"
+"in vec3 vPosition;\n"
 "void main()\n"
 "{\n"
-"  gl_Position = vec4(vPosition, 0, 1);\n"
+"  gl_Position = vec4(vPosition, 1);\n"
+"  gl_PointSize = 8;\n"
 "}\n"
 ;
 
@@ -30,6 +31,9 @@ const char fragment_shader_text[] =
 "  fragColor = vec4(1.0, 0.8, 0.2, 0.0);\n"
 "}\n"
 ;
+
+
+GLuint vao, vbo, render_program;
 
 
 int load_shader(int type, const char *source) {
@@ -52,7 +56,7 @@ void init_shaders(void)
 {
   int vertex_shader = load_shader(GL_VERTEX_SHADER, vertex_shader_text);
   int fragment_shader = load_shader(GL_FRAGMENT_SHADER, fragment_shader_text);
-  int render_program = glCreateProgram();
+  render_program = glCreateProgram();
   glAttachShader(render_program, vertex_shader);
   glAttachShader(render_program, fragment_shader);
   glLinkProgram(render_program);
@@ -68,6 +72,19 @@ void init_shaders(void)
   glUseProgram(render_program);
 }
 
+void init_buffers(void)
+{
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glEnableVertexAttribArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+}
+
 
 void error_callback(int error, const char *msg)
 {
@@ -76,16 +93,19 @@ void error_callback(int error, const char *msg)
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_SPACE)
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+  if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_SPACE)
+    glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
 void display_callback(void)
 {
-    glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glColor3f(0.9f, 0.8f, 0.2f);
-    glRectf(-0.5f, -0.5f, 0.5f, 0.5f);
+  glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  glUseProgram(render_program);
+
+  glPointSize(8);
+  glDrawArrays(GL_POINTS, 0, 3);
 }
 
 
@@ -103,6 +123,7 @@ int main(void)
   glViewport(0, 0, RES, RES);
 
   init_shaders();
+  init_buffers();
 
   while (!glfwWindowShouldClose(window)) {
     display_callback();
