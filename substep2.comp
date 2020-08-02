@@ -1,21 +1,29 @@
 #version 430 core
+#define N 256
+#define G 32
 
-layout (std430, binding = 0) buffer b0
-{
+layout (std430, binding = 0) buffer b0 {
   vec2 x[];
 };
-
-layout (std430, binding = 1) buffer b1
-{
+layout (std430, binding = 1) buffer b1 {
   vec2 v[];
 };
+layout (std430, binding = 2) buffer b2 {
+  mat2 C[];
+};
+layout (std430, binding = 3) buffer b3 {
+  float J[];
+};
+layout (std430, binding = 4) buffer b4 {
+  vec2 grid_v[];
+};
+layout (std430, binding = 5) buffer b5 {
+  float grid_m[];
+};
 
-
-layout (local_size_x = 256) in;
+layout (local_size_x = N) in;
 
 void main()
 {
-  float dt = 0.02;
-  uint i = gl_GlobalInvocationID.x;
-  x[i] += v[i] * dt;
+  uint p = gl_GlobalInvocationID.x;
 }

@@ -8,13 +8,19 @@
 #define N 256
 #define G 32
 
+#define NSSTP 4
+#define NSSBO 4
+
 float b_x[N * 2];
 float b_v[N * 2];
 float b_C[N * 4];
 float b_J[N];
-
 float b_grid_v[G * G * 2];
 float b_grid_m[G * G];
+
+int ssbos[NSSBO];
+int substeps[NSSTP];
+
 
 const char vertex_shader_text[] =
 "#version 330 core\n"
@@ -37,13 +43,8 @@ const char fragment_shader_text[] =
 "}\n"
 ;
 
-
 int vao, vbo;
 int render_program;
-
-int ssbos[8];
-int program_substep1;
-int program_substep2;
 
 
 int load_shader(int type, const char *source) {
@@ -138,8 +139,11 @@ char *file_get_content(const char *name)
 
 void init_compute_shaders(void)
 {
-  program_substep1 = create_compute_shader(file_get_content("substep1.comp"));
-  program_substep2 = create_compute_shader(file_get_content("substep2.comp"));
+  char name[512];
+  for (int i = 0; i < NSSTP; i++) {
+    sprintf(name, "substep%d.comp", i);
+    substeps[i] = create_compute_shader(file_get_content(name));
+  }
 }
 
 int create_ssbo_buffer(int i, void *data, size_t size)
@@ -163,11 +167,19 @@ void init_compute_buffers(void)
 
 void do_compute(void)
 {
-  glUseProgram(program_substep1);
+  glUseProgram(substeps[0]);
   glDispatchCompute(1, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-  glUseProgram(program_substep2);
+  glUseProgram(substeps[1]);
+  glDispatchCompute(1, 1, 1);
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+  glUseProgram(substeps[2]);
+  glDispatchCompute(1, 1, 1);
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+  glUseProgram(substeps[3]);
   glDispatchCompute(1, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 

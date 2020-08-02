@@ -21,9 +21,10 @@ layout (std430, binding = 5) buffer b5 {
   float grid_m[];
 };
 
-layout (local_size_x = N) in;
+layout (local_size_x = G, local_size_y = G) in;
 
 void main()
 {
-  uint p = gl_GlobalInvocationID.x;
+  uvec2 ij = gl_GlobalInvocationID.xy;
 }
+
