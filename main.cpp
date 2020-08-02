@@ -65,7 +65,8 @@ int vao, vbo;
 int render_program;
 
 int ssbo_particles;
-int compute_program;
+int program_substep1;
+int program_substep2;
 
 
 int load_shader(int type, const char *source) {
@@ -161,7 +162,8 @@ char *file_get_content(const char *name)
 
 void init_compute_shaders(void)
 {
-  compute_program = create_compute_shader(file_get_content("substep1.comp"));
+  program_substep1 = create_compute_shader(file_get_content("substep1.comp"));
+  program_substep2 = create_compute_shader(file_get_content("substep2.comp"));
 }
 
 void init_compute_buffers(void)
@@ -174,9 +176,14 @@ void init_compute_buffers(void)
 
 void do_compute(void)
 {
-  glUseProgram(compute_program);
+  glUseProgram(program_substep1);
   glDispatchCompute(1, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+  glUseProgram(program_substep2);
+  glDispatchCompute(1, 1, 1);
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_particles);
   void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
   memcpy(particles, p, sizeof(particles));

@@ -17,5 +17,4 @@ void main()
   if (pos[i].x < -1 && vel[i].x < 0) vel[i].x *= -1;
   if (pos[i].y > +1 && vel[i].y > 0) vel[i].y *= -1;
   if (pos[i].y < -1 && vel[i].y < 0) vel[i].y *= -1;
-  pos[i] += vel[i] * dt;
 }
