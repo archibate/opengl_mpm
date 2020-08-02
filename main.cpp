@@ -6,8 +6,15 @@
 
 #define RES 512
 #define N 256
+#define G 32
 
-float particles[N * 2 * 2];
+float b_x[N * 2];
+float b_v[N * 2];
+float b_C[N * 4];
+float b_J[N];
+
+float b_grid_v[G * G * 2];
+float b_grid_m[G * G];
 
 const char vertex_shader_text[] =
 "#version 330 core\n"
@@ -30,34 +37,11 @@ const char fragment_shader_text[] =
 "}\n"
 ;
 
-const char compute_shader_text[] =
-"#version 430 core\n"
-"\n"
-"layout (std430, binding = 0) buffer b_particles {\n"
-"  vec2 pos[3];\n"
-"  vec2 vel[3];\n"
-"};\n"
-"\n"
-"layout (local_size_x = 3) in;\n"
-"\n"
-"void main()\n"
-"{\n"
-"  float dt = 0.02;\n"
-"  uint i = gl_GlobalInvocationID.x;\n"
-"  vel[i] -= vec2(0.0, 1.0) * dt;\n"
-"  if (pos[i].x > +1 && vel[i].x > 0) vel[i].x *= -1;\n"
-"  if (pos[i].x < -1 && vel[i].x < 0) vel[i].x *= -1;\n"
-"  if (pos[i].y > +1 && vel[i].y > 0) vel[i].y *= -1;\n"
-"  if (pos[i].y < -1 && vel[i].y < 0) vel[i].y *= -1;\n"
-"  pos[i] += vel[i] * dt;\n"
-"}\n"
-;
-
 
 int vao, vbo;
 int render_program;
 
-int ssbo_particles;
+int ssbos[8];
 int program_substep1;
 int program_substep2;
 
@@ -118,8 +102,7 @@ void init_render_shaders(void)
 void init_render_buffers(void)
 {
   vbo = create_buffer();
-  bind_buffer_data(GL_ARRAY_BUFFER,
-      vbo, sizeof(particles), particles, GL_STATIC_DRAW);
+  bind_buffer_data(GL_ARRAY_BUFFER, vbo, sizeof(b_x), b_x, GL_STATIC_DRAW);
 
   glGenVertexArrays(1, (GLuint *)&vao);
   glBindVertexArray(vao);
@@ -159,12 +142,23 @@ void init_compute_shaders(void)
   program_substep2 = create_compute_shader(file_get_content("substep2.comp"));
 }
 
+int create_ssbo_buffer(int i, void *data, size_t size)
+{
+  ssbos[i] = create_buffer();
+  bind_buffer_data(GL_SHADER_STORAGE_BUFFER, ssbos[i],
+      size, data, GL_DYNAMIC_READ);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, ssbos[i]);
+  return ssbos[i];
+}
+
 void init_compute_buffers(void)
 {
-  ssbo_particles = create_buffer();
-  bind_buffer_data(GL_SHADER_STORAGE_BUFFER, ssbo_particles,
-      sizeof(particles), particles, GL_DYNAMIC_READ);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_particles);
+  create_ssbo_buffer(0, b_x, sizeof(b_x));
+  create_ssbo_buffer(1, b_v, sizeof(b_v));
+  create_ssbo_buffer(2, b_C, sizeof(b_C));
+  create_ssbo_buffer(3, b_J, sizeof(b_J));
+  create_ssbo_buffer(4, b_grid_v, sizeof(b_grid_v));
+  create_ssbo_buffer(5, b_grid_m, sizeof(b_grid_m));
 }
 
 void do_compute(void)
@@ -177,9 +171,9 @@ void do_compute(void)
   glDispatchCompute(1, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_particles);
-  void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-  memcpy(particles, p, sizeof(particles));
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos[0]);
+  void *map_x = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+  memcpy(b_x, map_x, sizeof(b_x));
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
 
@@ -203,14 +197,14 @@ void display_callback(void)
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(render_program);
   bind_buffer_data(GL_ARRAY_BUFFER,
-      vbo, sizeof(particles), particles, GL_STATIC_DRAW);
+      vbo, sizeof(b_x), b_x, GL_STATIC_DRAW);
   glDrawArrays(GL_POINTS, 0, N);
 }
 
 void random_init(void)
 {
   for (int i = 0; i < N * 2 * 2; i++) {
-    particles[i] = (float)drand48() * 2 - 1;
+    b_x[i] = (float)drand48() * 2 - 1;
   }
 }
 

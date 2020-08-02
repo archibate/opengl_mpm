@@ -1,9 +1,13 @@
 #version 430 core
 
-layout (std430, binding = 0) buffer b_particles
+layout (std430, binding = 0) buffer b0
 {
-  vec2 pos[256];
-  vec2 vel[256];
+  vec2 x[];
+};
+
+layout (std430, binding = 1) buffer b1
+{
+  vec2 v[];
 };
 
 layout (local_size_x = 256) in;
@@ -12,9 +16,9 @@ void main()
 {
   float dt = 0.02;
   uint i = gl_GlobalInvocationID.x;
-  vel[i] -= vec2(0.0, 1.0) * dt;
-  if (pos[i].x > +1 && vel[i].x > 0) vel[i].x *= -1;
-  if (pos[i].x < -1 && vel[i].x < 0) vel[i].x *= -1;
-  if (pos[i].y > +1 && vel[i].y > 0) vel[i].y *= -1;
-  if (pos[i].y < -1 && vel[i].y < 0) vel[i].y *= -1;
+  v[i] -= vec2(0.0, 1.0) * dt;
+  if (x[i].x > +1 && v[i].x > 0) v[i].x *= -1;
+  if (x[i].x < -1 && v[i].x < 0) v[i].x *= -1;
+  if (x[i].y > +1 && v[i].y > 0) v[i].y *= -1;
+  if (x[i].y < -1 && v[i].y < 0) v[i].y *= -1;
 }
