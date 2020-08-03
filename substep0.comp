@@ -1,35 +1,8 @@
 #version 430 core
-#define N 256
-#define G 32
-#define dx (1.0 / G)
-#define dt 2e-4
-#define p_rho 1
-#define p_vol sqr(dx * 0.5)
-#define p_mass (p_vol * p_rho)
-#define E 400
-#define bound 3
-#define gravity 9.8
+#extension GL_ARB_shading_language_include: require
+#include </glcommon.h>
 
-layout (std430, binding = 0) buffer b0 {
-  vec2 x[];
-};
-layout (std430, binding = 1) buffer b1 {
-  vec2 v[];
-};
-layout (std430, binding = 2) buffer b2 {
-  mat2 C[];
-};
-layout (std430, binding = 3) buffer b3 {
-  float J[];
-};
-layout (std430, binding = 4) buffer b4 {
-  vec2 grid_v[];
-};
-layout (std430, binding = 5) buffer b5 {
-  float grid_m[];
-};
-
-layout (local_size_x = G, local_size_y = G) in;
+layout (local_size_x = G1, local_size_y = G1) in;
 
 void main()
 {

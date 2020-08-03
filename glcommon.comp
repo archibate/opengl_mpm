@@ -1,0 +1,36 @@
+#define N0 1
+#define G0 1
+#define N1 512
+#define G1 8
+#define N (N0 * N1)
+#define G (G0 * G1)
+
+#ifndef _HOST
+#define dx (1.0 / G)
+#define dt 2e-4
+#define p_rho 1
+#define p_vol sqr(dx * 0.5)
+#define p_mass (p_vol * p_rho)
+#define E 400
+#define bound 3
+#define gravity 9.8
+
+layout (std430, binding = 0) buffer b0 {
+  vec2 x[];
+};
+layout (std430, binding = 1) buffer b1 {
+  vec2 v[];
+};
+layout (std430, binding = 2) buffer b2 {
+  mat2 C[];
+};
+layout (std430, binding = 3) buffer b3 {
+  float J[];
+};
+layout (std430, binding = 4) buffer b4 {
+  vec2 grid_v[];
+};
+layout (std430, binding = 5) buffer b5 {
+  float grid_m[];
+};
+#endif

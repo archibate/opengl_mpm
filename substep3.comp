@@ -1,45 +1,14 @@
 #version 430 core
-#define N 256
-#define G 32
-#define dx (1.0 / G)
-#define dt 2e-4
-#define p_rho 1
-#define p_vol sqr(dx * 0.5)
-#define p_mass (p_vol * p_rho)
-#define E 400
-#define bound 3
-#define gravity 9.8
+#extension GL_ARB_shading_language_include: require
+#include </glcommon.h>
 
-layout (std430, binding = 0) buffer b0 {
-  vec2 x[];
-};
-layout (std430, binding = 1) buffer b1 {
-  vec2 v[];
-};
-layout (std430, binding = 2) buffer b2 {
-  mat2 C[];
-};
-layout (std430, binding = 3) buffer b3 {
-  float J[];
-};
-layout (std430, binding = 4) buffer b4 {
-  vec2 grid_v[];
-};
-layout (std430, binding = 5) buffer b5 {
-  float grid_m[];
-};
-
-layout (local_size_x = N) in;
+layout (local_size_x = N1) in;
 
 float sqr(float x) {
   return x * x;
 }
 
-vec2 sqr(vec2 x) {
-  return x * x;
-}
-
-vec2 wfunc(int i, vec2 fx) {
+float wfunc(int i, float fx) {
   if (i == 0) {
     return 0.5 * sqr(1.5 - fx);
   } else if (i == 1) {
@@ -61,8 +30,7 @@ void main()
     for (int j = 0; j < 3; j++) {
       ivec2 off = ivec2(i, j);
       vec2 dpos = (off - fx) * dx;
-      vec2 wi = wfunc(i, fx);
-      float weight = wi.x * wi.y;
+      float weight = wfunc(i, fx.x) * wfunc(j, fx.y);
       ivec2 gij = base + off;
       int g_ = gij.x * G + gij.y;
       vec2 g_v = grid_v[g_];
@@ -73,5 +41,5 @@ void main()
   v[p] = new_v;
   x[p] += dt * v[p];
   J[p] *= 1 + dt * (new_C[0][0] + new_C[1][1]);
-  C[p] *= new_C;
+  C[p] = new_C;
 }

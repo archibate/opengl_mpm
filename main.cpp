@@ -3,11 +3,11 @@
 #include <string.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#define _HOST
+#include "glcommon.comp"
+#undef _HOST
 
 #define RES 512
-#define N 256
-#define G 32
-
 #define NSSTP 4
 #define NSSBO 4
 
@@ -28,7 +28,7 @@ const char vertex_shader_text[] =
 "\n"
 "void main()\n"
 "{\n"
-"  gl_Position = vec4(vPosition, 1);\n"
+"  gl_Position = vec4(vPosition * 2 - 1, 1);\n"
 "  gl_PointSize = 4;\n"
 "}\n"
 ;
@@ -140,6 +140,10 @@ char *file_get_content(const char *name)
 void init_compute_shaders(void)
 {
   char name[512];
+  strcpy(name, "/glcommon.h");
+  char *header = file_get_content("glcommon.comp");
+  glNamedStringARB(GL_SHADER_INCLUDE_ARB, strlen(name), name,
+      strlen(header), header);
   for (int i = 0; i < NSSTP; i++) {
     sprintf(name, "substep%d.comp", i);
     substeps[i] = create_compute_shader(file_get_content(name));
@@ -168,19 +172,19 @@ void init_compute_buffers(void)
 void do_compute(void)
 {
   glUseProgram(substeps[0]);
-  glDispatchCompute(1, 1, 1);
+  glDispatchCompute(G0, G0, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
   glUseProgram(substeps[1]);
-  glDispatchCompute(1, 1, 1);
+  glDispatchCompute(N0, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
   glUseProgram(substeps[2]);
-  glDispatchCompute(1, 1, 1);
+  glDispatchCompute(G0, G0, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
   glUseProgram(substeps[3]);
-  glDispatchCompute(1, 1, 1);
+  glDispatchCompute(N0, 1, 1);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos[0]);
@@ -215,8 +219,11 @@ void display_callback(void)
 
 void random_init(void)
 {
-  for (int i = 0; i < N * 2 * 2; i++) {
-    b_x[i] = (float)drand48() * 2 - 1;
+  for (int i = 0; i < N; i++) {
+    b_x[i * 2 + 0] = (float)drand48() * 0.4 + 0.2;
+    b_x[i * 2 + 1] = (float)drand48() * 0.4 + 0.2;
+    b_v[i * 2 + 1] = -1.0;
+    b_J[i] = 1.0;
   }
 }
 
