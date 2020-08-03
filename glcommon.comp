@@ -1,17 +1,17 @@
-#define N0 1
-#define G0 1
+#define N0 64
+#define G0 8
 #define N1 512
-#define G1 8
+#define G1 32
 #define N (N0 * N1)
 #define G (G0 * G1)
 
 #ifndef _HOST
 #define dx (1.0 / G)
-#define dt 2e-4
-#define p_rho 1
+#define dt 1e-4
+#define p_rho 1.0
 #define p_vol sqr(dx * 0.5)
 #define p_mass (p_vol * p_rho)
-#define E 400
+#define E 400.0
 #define bound 3
 #define gravity 9.8
 
@@ -33,4 +33,12 @@ layout (std430, binding = 4) buffer b4 {
 layout (std430, binding = 5) buffer b5 {
   float grid_m[];
 };
+#ifndef GL_NV_shader_atomic_float
+layout (std430, binding = 4) buffer b4i {
+  ivec2 grid_v_i[];
+};
+layout (std430, binding = 5) buffer b5i {
+  int grid_m_i[];
+};
+#endif
 #endif

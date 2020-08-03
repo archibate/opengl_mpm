@@ -1,6 +1,8 @@
 #version 430 core
 #extension GL_ARB_shading_language_include: require
+#ifdef GL_NV_shader_atomic_float
 #extension GL_NV_shader_atomic_float: enable
+#endif
 #include </glcommon.h>
 
 layout (local_size_x = N1) in;
@@ -35,9 +37,29 @@ void main()
       ivec2 gij = base + off;
       int g_ = gij.x * G + gij.y;
       vec2 gvel = p_mass * v[p] + affine * dpos;
+#ifdef GL_NV_shader_atomic_float
       atomicAdd(grid_v[g_].x, weight * gvel.x);
       atomicAdd(grid_v[g_].y, weight * gvel.y);
       atomicAdd(grid_m[g_], weight * p_mass);
+#else
+      float rhs;
+      int old, new;
+      rhs = weight * gvel.x;
+      do {
+        old = grid_v_i[g_].x;
+        new = floatBitsToInt(intBitsToFloat(old) + rhs);
+      } while (old != atomicCompSwap(grid_v_i[g_].x, old, new));
+      rhs = weight * gvel.y;
+      do {
+        old = grid_v_i[g_].y;
+        new = floatBitsToInt(intBitsToFloat(old) + rhs);
+      } while (old != atomicCompSwap(grid_v_i[g_].y, old, new));
+      rhs = weight * p_mass;
+      do {
+        old = grid_m_i[g_];
+        new = floatBitsToInt(intBitsToFloat(old) + rhs);
+      } while (old != atomicCompSwap(grid_m_i[g_], old, new));
+#endif
     }
   }
 }

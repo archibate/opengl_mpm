@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #define _HOST
@@ -9,7 +10,7 @@
 
 #define RES 512
 #define NSSTP 4
-#define NSSBO 4
+#define NSSBO 6
 
 float b_x[N * 2];
 float b_v[N * 2];
@@ -29,7 +30,6 @@ const char vertex_shader_text[] =
 "void main()\n"
 "{\n"
 "  gl_Position = vec4(vPosition * 2 - 1, 1);\n"
-"  gl_PointSize = 4;\n"
 "}\n"
 ;
 
@@ -171,21 +171,23 @@ void init_compute_buffers(void)
 
 void do_compute(void)
 {
-  glUseProgram(substeps[0]);
-  glDispatchCompute(G0, G0, 1);
-  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+  for (int i = 0; i < 50; i++) {
+    glUseProgram(substeps[0]);
+    glDispatchCompute(G0, G0, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-  glUseProgram(substeps[1]);
-  glDispatchCompute(N0, 1, 1);
-  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glUseProgram(substeps[1]);
+    glDispatchCompute(N0, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-  glUseProgram(substeps[2]);
-  glDispatchCompute(G0, G0, 1);
-  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glUseProgram(substeps[2]);
+    glDispatchCompute(G0, G0, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-  glUseProgram(substeps[3]);
-  glDispatchCompute(N0, 1, 1);
-  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glUseProgram(substeps[3]);
+    glDispatchCompute(N0, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+  }
 
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbos[0]);
   void *map_x = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
@@ -205,16 +207,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
+void count_fps(void)
+{
+  static double last_time = 0;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  double t = tv.tv_sec + 1e-6 * tv.tv_usec;
+  if (last_time != 0)
+    printf("%.02f FPS\n", 1 / (t - last_time));
+  last_time = t;
+}
+
 void display_callback(void)
 {
   do_compute();
-  glPointSize(4);
+  glPointSize(2);
   glClearColor(0.1f, 0.2f, 0.1f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(render_program);
   bind_buffer_data(GL_ARRAY_BUFFER,
       vbo, sizeof(b_x), b_x, GL_STATIC_DRAW);
   glDrawArrays(GL_POINTS, 0, N);
+  count_fps();
 }
 
 void random_init(void)
