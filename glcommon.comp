@@ -1,5 +1,6 @@
-#define N0 64
-#define G0 8
+#define Q 4
+#define N0 (Q * Q)
+#define G0 Q
 #define N1 512
 #define G1 32
 #define N (N0 * N1)
@@ -7,7 +8,13 @@
 
 #ifndef _HOST
 #define dx (1.0 / G)
+#if Q <= 4
+#define dt 2e-4
+#elif Q <= 8
 #define dt 1e-4
+#else
+#define dt 4e-5
+#endif
 #define p_rho 1.0
 #define p_vol sqr(dx * 0.5)
 #define p_mass (p_vol * p_rho)
